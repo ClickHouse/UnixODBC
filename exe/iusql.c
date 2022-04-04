@@ -19,6 +19,9 @@
     #include <readline/readline.h>
     #include <readline/history.h>
 #endif
+#ifdef HAVE_EDITLINE
+    #include <editline/readline.h>
+#endif
 
 #ifdef HAVE_SETLOCALE
     #ifdef HAVE_LOCALE_H
@@ -32,18 +35,13 @@ static int ExecuteSQL( SQLHDBC hDbc, char *szSQL, char cDelimiter, int bColumnNa
 static int ExecuteHelp( SQLHDBC hDbc, char *szSQL, char cDelimiter, int bColumnNames, int bHTMLTable );
 
 static void WriteHeaderHTMLTable( SQLHSTMT hStmt );
-static void WriteHeaderNormal( SQLHSTMT hStmt, SQLCHAR	*szSepLine );
 static void WriteHeaderDelimited( SQLHSTMT hStmt, char cDelimiter );
 static void WriteBodyHTMLTable( SQLHSTMT hStmt );
 static SQLLEN WriteBodyNormal( SQLHSTMT hStmt );
 static void WriteBodyDelimited( SQLHSTMT hStmt, char cDelimiter );
 static void WriteFooterHTMLTable( SQLHSTMT hStmt );
-static void WriteFooterNormal( SQLHSTMT hStmt, SQLCHAR	*szSepLine, SQLLEN nRows );
 
 static int DumpODBCLog( SQLHENV hEnv, SQLHDBC hDbc, SQLHSTMT hStmt );
-static int get_args(char *string, char **args, int maxarg);
-static void free_args(char **args, int maxarg);
-static void output_help(void);
 
 
 int     bVerbose                    = 0;
@@ -93,6 +91,7 @@ int main( int argc, char *argv[] )
     char    *szSQL;
     char    *pEscapeChar;
     int     buffer_size = 9000;
+    int     len;
 
     szDSN = NULL;
     szUID = NULL;
@@ -199,7 +198,7 @@ int main( int argc, char *argv[] )
     do
     {
         if ( !bBatch )
-#ifndef HAVE_READLINE
+#if !defined(HAVE_EDITLINE) && !defined(HAVE_READLINE)
             printf( "SQL> " );
 #else
         {
@@ -249,6 +248,24 @@ int main( int argc, char *argv[] )
         /* strip away escape chars */
         while ( (pEscapeChar=(char*)strchr(szSQL, '\n')) != NULL || (pEscapeChar=(char*)strchr(szSQL, '\r')) != NULL )
             *pEscapeChar = ' ';
+
+        len = strlen( szSQL );
+
+        /* remove trailing spaces */
+
+        while( len > 0 ) 
+        {
+            len --;
+
+            if ( szSQL[ len ] == ' ' ) 
+            {
+                szSQL[ len ] = '\0';
+            }
+            else 
+            {
+                break;
+            }
+        }
 
         if ( szSQL[1] != '\0' )
         {

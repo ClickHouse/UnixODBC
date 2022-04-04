@@ -239,8 +239,8 @@ SQLRETURN SQLGetStmtAttr( SQLHSTMT statement_handle,
                 statement -> state == STATE_S3 ||
                 statement -> state == STATE_S4 ||
                 statement -> state == STATE_S5 ||
-                ( statement -> state == STATE_S6 ||
-                  statement -> state == STATE_S7 )  && statement -> eod )
+                (( statement -> state == STATE_S6 ||
+                  statement -> state == STATE_S7 ) && statement -> eod ))
         {
             dm_log_write( __FILE__, 
                     __LINE__, 
@@ -443,9 +443,9 @@ SQLRETURN SQLGetStmtAttr( SQLHSTMT statement_handle,
             ( CHECK_SQLGETSTMTATTRW( statement -> connection ) || 
             CHECK_SQLGETSTMTATTR( statement -> connection )))
     {
-        if ( CHECK_SQLGETSTMTATTRW( statement -> connection ))
+        if ( CHECK_SQLGETSTMTATTR( statement -> connection ))
         {
-            ret = SQLGETSTMTATTRW( statement -> connection,
+            ret = SQLGETSTMTATTR( statement -> connection,
                 statement -> driver_stmt,
                 attribute,
                 value,
@@ -454,7 +454,7 @@ SQLRETURN SQLGetStmtAttr( SQLHSTMT statement_handle,
         }
         else
         {
-            ret = SQLGETSTMTATTR( statement -> connection,
+            ret = SQLGETSTMTATTRW( statement -> connection,
                 statement -> driver_stmt,
                 attribute,
                 value,
@@ -541,5 +541,5 @@ SQLRETURN SQLGetStmtAttr( SQLHSTMT statement_handle,
                 statement -> msg );
     }
 
-    return function_return( SQL_HANDLE_STMT, statement, ret );
+    return function_return( SQL_HANDLE_STMT, statement, ret, DEFER_R3 );
 }

@@ -236,18 +236,8 @@ SQLRETURN SQLCancel( SQLHSTMT statement_handle )
             else if ( statement -> interupted_func ==
                     SQL_API_SQLBULKOPERATIONS )
             {
-                if ( statement -> interupted_state == STATE_S5 ||
-                        statement -> interupted_state == STATE_S6 ||
-                        statement -> interupted_state == STATE_S7 )
-                {
-                    statement -> state = STATE_S6;
-                    statement -> eod = 0;
-                }
-                else
-                {
-                    statement -> state = STATE_S6;
-                    statement -> eod = 0;
-                }
+                statement -> state = STATE_S6;
+                statement -> eod = 0;
             }
             else if ( statement -> interupted_func ==
                     SQL_API_SQLSETPOS )
@@ -304,13 +294,13 @@ SQLRETURN SQLCancel( SQLHSTMT statement_handle )
 #if defined( HAVE_LIBPTH ) || defined( HAVE_LIBPTHREAD ) || defined( HAVE_LIBTHREAD )
     if ( statement -> connection -> protection_level == 3 ) 
     {
-        return function_return( SQL_HANDLE_STMT, statement, SQL_ERROR );
+        return function_return( SQL_HANDLE_STMT, statement, SQL_ERROR, DEFER_R2 );
     }
     else 
     {
-        return function_return( IGNORE_THREAD, statement, ret );
+        return function_return( IGNORE_THREAD, statement, ret, DEFER_R2 );
     }
 #else
-    return function_return( IGNORE_THREAD, statement, ret );
+    return function_return( IGNORE_THREAD, statement, ret, DEFER_R2 );
 #endif
 }

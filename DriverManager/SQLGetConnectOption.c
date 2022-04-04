@@ -171,14 +171,7 @@ SQLRETURN SQLGetConnectOption( SQLHDBC connection_handle,
     {
         if ( value )
         {
-            if ( log_info.log_flag )
-            {
-                *((SQLINTEGER*)value) = SQL_OPT_TRACE_ON;
-            }
-            else
-            {
-                *((SQLINTEGER*)value) = SQL_OPT_TRACE_ON;
-            }
+            *((SQLINTEGER*)value) = SQL_OPT_TRACE_ON;
         }
 
         return SQL_SUCCESS;
@@ -529,6 +522,6 @@ SQLRETURN SQLGetConnectOption( SQLHDBC connection_handle,
                     connection -> msg );
         }
 
-        return function_return( SQL_HANDLE_DBC, connection, ret );
+        return function_return( SQL_HANDLE_DBC, connection, ret, DEFER_R3 );
     }
 }

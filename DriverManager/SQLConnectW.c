@@ -380,9 +380,7 @@ SQLRETURN SQLConnectW( SQLHDBC connection_handle,
     {
         if ( CHECK_SQLSETCONNECTATTR( connection ))
         {
-            int lret;
-                
-            lret = SQLSETCONNECTATTR( connection,
+            SQLSETCONNECTATTR( connection,
                     connection -> driver_dbc,
                     SQL_ATTR_ANSI_APP,
                     SQL_AA_FALSE,
@@ -463,7 +461,7 @@ SQLRETURN SQLConnectW( SQLHDBC connection_handle,
                             sqlstate,
                             &native_error,
                             message_text,
-                            sizeof( message_text ),
+                            sizeof( message_text )/sizeof(SQLWCHAR),
                             &ind );
 
 
@@ -501,7 +499,7 @@ SQLRETURN SQLConnectW( SQLHDBC connection_handle,
                             sqlstate,
                             &native_error,
                             message_text,
-                            sizeof( message_text ),
+                            sizeof( message_text )/sizeof(SQLWCHAR),
                             &ind );
 
 
@@ -621,7 +619,7 @@ SQLRETURN SQLConnectW( SQLHDBC connection_handle,
             __disconnect_part_one( connection );
             __disconnect_part_four( connection );       /* release unicode handles */
 
-            return function_return( SQL_HANDLE_DBC, connection, ret_from_connect );
+            return function_return( SQL_HANDLE_DBC, connection, ret_from_connect, DEFER_R0 );
         }
     }
 
@@ -658,7 +656,7 @@ SQLRETURN SQLConnectW( SQLHDBC connection_handle,
 
         connection -> state = STATE_C3;
 
-        return function_return( SQL_HANDLE_DBC, connection, SQL_ERROR );
+        return function_return( SQL_HANDLE_DBC, connection, SQL_ERROR, DEFER_R0 );
     }
 
     if ( log_info.log_flag ) 

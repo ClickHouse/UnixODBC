@@ -128,6 +128,14 @@
 #define STATE_D1e       2
 
 /*
+ * rules to extract diag/error record from driver
+ */
+#define DEFER_R0        0            /* Not defer extracting diag/err record from driver. Use this as default */
+#define DEFER_R1        1            /* defer extracting diag/err record from driver when SQL_SUCCESS_WITH_INFO is returned */
+#define DEFER_R2        2            /* defer extracting diag/err record from driver when SQL_ERROR is returned */
+#define DEFER_R3        3            /* defer extracting diag/err record from driver when SQL_SUCCESS_WITH_INFO or SQL_ERROR is returned */
+
+/*
  * structure to contain the loaded lib entry points
  */
 
@@ -200,6 +208,10 @@ typedef struct error_head
     SQLINTEGER  diag_dynamic_function_code;
     SQLLEN      diag_number;
     SQLLEN      diag_row_count;
+    int         defer_extract;   /* determine the extraction of driver's message for
+                                           SQLGetDiagRec or SQLGetDiagField.
+                                           0 by default is not deferred */
+    SQLRETURN   ret_code_deferred; /* used for deferring extraction */
 } EHEAD;
 
 struct log_structure
@@ -209,7 +221,7 @@ struct log_structure
     int     log_flag;
     int     pid_logging;            /* the log path specifies a directory, and a */
                                     /* log file per pid is created */
-
+    int     ref_count;              /* number of times dm_log_open()'d without dm_log_close() */
 };
 
 extern struct log_structure log_info;
@@ -223,7 +235,7 @@ struct save_attr
     int                 attr_type;
     char                *str_attr;
     int                 str_len;
-    SQLLEN              int_attr;
+    intptr_t            intptr_attr;
     struct save_attr    *next;
 };
 
@@ -651,7 +663,7 @@ typedef enum error_id
 
 #define IGNORE_THREAD       (-1)
 
-#define function_return(l,h,r)    function_return_ex(l,h,r,FALSE)
+#define function_return(l,h,r,d)    function_return_ex(l,h,r,FALSE,d)
 
 #define SUBCLASS_ODBC           0
 #define SUBCLASS_ISO            1
@@ -684,8 +696,14 @@ void __post_internal_error_ex_w_noprefix( EHEAD *error_handle,
         SQLWCHAR *message_text,
         int class_origin,
         int subclass_origin );
+
+void extract_error_from_driver( EHEAD * error_handle,
+        DMHDBC hdbc,
+        int ret_code,
+        int save_to_diag );
+
 int function_return_nodrv( int level, void *handle, int ret_code );
-int function_return_ex( int level, void * handle, int ret_code, int save_to_diag );
+int function_return_ex( int level, void * handle, int ret_code, int save_to_diag, int defer_type );
 void function_entry( void *handle );
 void setup_error_head( EHEAD *error_header, void *handle, int handle_type );
 void clear_error_head( EHEAD *error_header );
@@ -827,6 +845,33 @@ int __append_pair( struct con_struct *con_str, char *kword, char *value );
 void __handle_attr_extensions_cs( DMHDBC connection, struct con_struct *con_str );
 void __strip_from_pool( DMHENV env );
 
+void extract_diag_error_w( int htype,
+                            DRV_SQLHANDLE handle,
+                            DMHDBC connection,
+                            EHEAD *head,
+                            int return_code,
+                            int save_to_diag );
+
+void extract_diag_error( int htype,
+                            DRV_SQLHANDLE handle,
+                            DMHDBC connection,
+                            EHEAD *head,
+                            int return_code,
+                            int save_to_diag );
+
+void extract_sql_error_w( DRV_SQLHANDLE henv,
+                            DRV_SQLHANDLE hdbc,
+                            DRV_SQLHANDLE hstmt,
+                            DMHDBC connection,
+                            EHEAD *head, 
+                            int return_code );
+
+void extract_sql_error( DRV_SQLHANDLE henv,
+                            DRV_SQLHANDLE hdbc,
+                            DRV_SQLHANDLE hstmt,
+                            DMHDBC connection,
+                            EHEAD *head, 
+                            int return_code );
 /*
  * the following two are part of a effort to get a particular unicode driver working
  */
