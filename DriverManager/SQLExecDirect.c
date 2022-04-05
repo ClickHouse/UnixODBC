@@ -441,7 +441,7 @@ SQLRETURN SQLExecDirect( SQLHSTMT statement_handle,
 
         if ( ret == SQL_SUCCESS_WITH_INFO )
         {
-            function_return_ex( IGNORE_THREAD, statement, ret, TRUE );
+            function_return_ex( IGNORE_THREAD, statement, ret, TRUE, DEFER_R1 );
         }
 
         local_ret = SQLNUMRESULTCOLS( statement -> connection,
@@ -500,9 +500,9 @@ SQLRETURN SQLExecDirect( SQLHSTMT statement_handle,
 
         statement -> prepared = 0;
     }
-    else if ( statement -> state >= STATE_S2 && statement -> state <= STATE_S4 ||
-              statement -> state >= STATE_S11 && statement -> state <= STATE_S12 &&
-              statement -> interupted_state >= STATE_S2 && statement -> interupted_state <= STATE_S4)
+    else if (( statement -> state >= STATE_S2 && statement -> state <= STATE_S4 ) ||
+              ( statement -> state >= STATE_S11 && statement -> state <= STATE_S12 &&
+              statement -> interupted_state >= STATE_S2 && statement -> interupted_state <= STATE_S4 ))
     {
         statement -> state = STATE_S1;
     }
@@ -524,5 +524,5 @@ SQLRETURN SQLExecDirect( SQLHSTMT statement_handle,
                 statement -> msg );
     }
 
-    return function_return( SQL_HANDLE_STMT, statement, ret );
+    return function_return( SQL_HANDLE_STMT, statement, ret, DEFER_R1 );
 }

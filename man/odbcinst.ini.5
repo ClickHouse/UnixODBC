@@ -1,4 +1,4 @@
-.TH odbcinst.ini 5 "Thu 27 Jun 2013" "version 2.3.2" "unixODBC manual pages"
+.TH odbcinst.ini 5 "Thu 27 Jun 2013" "version 2.3.6" "unixODBC manual pages"
 
 .SH NAME
 /etc/odbcinst.ini - An unixODBC drivers configuration
@@ -28,7 +28,7 @@ The general .ini file format is:
 .RE
 
 Each ODBC driver has its own section and can be referred to by the name of its
-section. Recognized configuration keys are:
+section. Configuration keys recognised in driver sections by unixODBC itself are:
 
 .IP \fBDescription
 A text string briefly describing the driver.
@@ -40,8 +40,27 @@ A filesystem path to the actual driver library.
 A filesystem path to the driver setup library.
 
 .IP \fBFileUsage
-.BR odbcinst (1)
-entry, if you edit the configuration file by hand, you have to supply it yourself.
+
+The section named \fB[ODBC]\fR configures global options. Keys recognised in
+the \fB[ODBC]\fR section include:
+
+.IP \fBTrace\fB
+
+Enable ODBC driver trace output, which is written to the path specified by \fBTraceFile\fR.
+
+Note that some drivers have their own separate trace control options. Unlike
+the \fBTrace\fR option these are usually specified at the DSN level.
+
+Values recognised as enabled are any case variation of "1", "y", "yes" or "on".
+
+.IP \fBTraceFile\fB
+
+Path or path-pattern to write the ODBC trace file to. Has no effect unless
+\fBTrace\fR is enabled. Default \fB/tmp/sql.log\fR.
+
+\fIWARNING\fR: setting \fBTraceFile\fB to a path writeable by multiple users
+may not work correctly as only the first user will be able to create and open
+the file.
 
 .SS TEMPLATE FILES
 The recommended way to manage the drivers is using the
@@ -62,19 +81,20 @@ FileUsage   = 1
 .fi
 .RE
 
+Note that driver paths may vary, and some drivers require \fBDriver64\fR and
+\fBSetup64\fR entries too.
+
 By specifying the driver like that, you can then reference it in the
 .BR odbc.ini (5)
 as follows:
 
 .RS
 .nf
-...
 Driver = PostgreSQL
-...
 .fi
 .RE
 
-The recommended way to add that driver is by creating template file containg:
+The recommended way to add that driver is by creating a template file containing:
 
 .RS
 .nf
@@ -93,8 +113,11 @@ and call the
 .RE
 
 .SH "SEE ALSO"
+.BR unixODBC (7),
 .BR odbcinst (1),
 .BR odbc.ini (5)
+
+.R "The \fIunixODBC\fB Administrator Manual (HTML)"
 
 .SH AUTHORS
 The authors of unixODBC are Peter Harvey <\fIpharvey@codebydesign.com\fR> and

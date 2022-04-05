@@ -474,7 +474,7 @@
 
 static char const rcsid[]= "$RCSfile: __info.c,v $ $Revision: 1.50 $";
 
-struct log_structure log_info = { NULL, NULL, 0 };
+struct log_structure log_info = { NULL, NULL, 0, 0 };
 
 SQLINTEGER ODBCSharedTraceFlag = 0;
 
@@ -692,7 +692,7 @@ char *unicode_to_ansi_alloc( SQLWCHAR *str, SQLINTEGER len, DMHDBC connection, i
 
     if ( len == SQL_NTS )
     {
-        len = wide_strlen( str ) + 1;
+        len = wide_strlen( str );
     }
 
     aptr = malloc(( len * 4 ) + 1 );       /* There may be UTF8 */
@@ -1223,7 +1223,7 @@ char * __iptr_as_string( SQLCHAR *s, SQLINTEGER *ptr )
 {
     if ( ptr )
     {
-        sprintf((char*) s, "%p -> %d", (void*)ptr, (int)*ptr );
+        sprintf((char*) s, "%p -> %ld (%d bits)", (void*)ptr, (long)*ptr, (int)sizeof( SQLINTEGER ) * 8 );
     }
     else
     {
@@ -1237,7 +1237,7 @@ char * __ptr_as_string( SQLCHAR *s, SQLLEN *ptr )
 {
     if ( ptr )
     {
-        sprintf((char*) s, "%p -> %d", (void*)ptr, (int)*ptr );
+        sprintf((char*) s, "%p -> %ld (%d bits)", (void*)ptr, (long)*ptr, (int)sizeof( SQLLEN ) * 8 );
     }
     else
     {
@@ -4183,7 +4183,7 @@ void clear_error_head( EHEAD *error_header )
  * get the error values from the handle
  */
 
-static void extract_diag_error( int htype,
+void extract_diag_error( int htype,
                             DRV_SQLHANDLE handle,
                             DMHDBC connection,
                             EHEAD *head,
@@ -4449,7 +4449,7 @@ static void extract_diag_error( int htype,
     while( SQL_SUCCEEDED( ret ));
 }
 
-static void extract_sql_error( DRV_SQLHANDLE henv,
+void extract_sql_error( DRV_SQLHANDLE henv,
                             DRV_SQLHANDLE hdbc,
                             DRV_SQLHANDLE hstmt,
                             DMHDBC connection,
@@ -4560,7 +4560,7 @@ static void extract_sql_error( DRV_SQLHANDLE henv,
     while( SQL_SUCCEEDED( ret ));
 }
 
-static void extract_diag_error_w( int htype,
+void extract_diag_error_w( int htype,
                             DRV_SQLHANDLE handle,
                             DMHDBC connection,
                             EHEAD *head,
@@ -4600,7 +4600,9 @@ static void extract_diag_error_w( int htype,
         if ( SQL_SUCCEEDED( ret ))
         {
             ERROR *e = malloc( sizeof( ERROR ));
+#ifndef STRICT_ODBC_ERROR
             SQLWCHAR *tmp;
+#endif
 
             /* 
              * make sure we are truncated in the right place
@@ -4804,7 +4806,7 @@ static void extract_diag_error_w( int htype,
     while( SQL_SUCCEEDED( ret ));
 }
 
-static void extract_sql_error_w( DRV_SQLHANDLE henv,
+void extract_sql_error_w( DRV_SQLHANDLE henv,
                             DRV_SQLHANDLE hdbc,
                             DRV_SQLHANDLE hstmt,
                             DMHDBC connection,
@@ -4836,7 +4838,9 @@ static void extract_sql_error_w( DRV_SQLHANDLE henv,
 
         if ( SQL_SUCCEEDED( ret ))
         {
+#ifndef STRICT_ODBC_ERROR
             SQLWCHAR *tmp;
+#endif
 
             /*
              * add to the lists, SQLError list first
@@ -4908,6 +4912,84 @@ static void extract_sql_error_w( DRV_SQLHANDLE henv,
     while( SQL_SUCCEEDED( ret ));
 }
 
+/*
+ * Extract diag information from driver
+ */
+void extract_error_from_driver( EHEAD * error_handle,
+                                DMHDBC hdbc,
+                                int ret_code,
+                                int save_to_diag )
+{
+    void (*extracterrorfunc)( DRV_SQLHANDLE, DRV_SQLHANDLE, DRV_SQLHANDLE, DMHDBC, EHEAD *, int ) = 0;
+    void (*extractdiagfunc)( int, DRV_SQLHANDLE, DMHDBC, EHEAD*, int, int ) = 0;
+
+    DRV_SQLHANDLE hdbc_drv = SQL_NULL_HDBC;
+    DRV_SQLHANDLE hstmt_drv = SQL_NULL_HSTMT;
+    DRV_SQLHANDLE handle_diag_extract = __get_driver_handle( error_handle );
+
+
+    if ( error_handle->handle_type == SQL_HANDLE_ENV )
+    {
+        return;
+    }
+
+    if ( error_handle->handle_type == SQL_HANDLE_DBC )
+    {
+        hdbc_drv = handle_diag_extract;
+    }
+    else if ( error_handle->handle_type == SQL_HANDLE_STMT )
+    {
+        hstmt_drv = handle_diag_extract;
+    }
+
+    /* If we have the W functions may as well use them */
+
+    if ( CHECK_SQLGETDIAGFIELDW( hdbc ) &&
+        CHECK_SQLGETDIAGRECW( hdbc ))
+    {
+        extractdiagfunc = extract_diag_error_w;
+    }
+    else if ( CHECK_SQLERRORW( hdbc ))
+    {
+        extracterrorfunc = extract_sql_error_w;
+    }
+    else if ( CHECK_SQLGETDIAGFIELD( hdbc ) &&
+             CHECK_SQLGETDIAGREC( hdbc ))
+    {
+        extractdiagfunc = extract_diag_error;
+    }
+    else if ( CHECK_SQLERROR( hdbc ))
+    {
+        extracterrorfunc = extract_sql_error;
+    }
+
+    if ( extractdiagfunc )
+    {
+        extractdiagfunc( error_handle->handle_type,
+                handle_diag_extract,
+                hdbc,
+                error_handle,
+                ret_code,
+                save_to_diag );
+    }
+    else if ( error_handle->handle_type != SQL_HANDLE_DESC && extracterrorfunc )
+    {
+        extracterrorfunc( SQL_NULL_HENV,
+                hdbc_drv,
+                hstmt_drv,
+                hdbc,
+                error_handle,
+                ret_code );
+    }
+    else
+    {
+        __post_internal_error( error_handle,
+            ERROR_HY000, "Driver returned SQL_ERROR or SQL_SUCCESS_WITH_INFO but no error reporting API found",
+            hdbc->environment->requested_version );
+    }
+}
+
+
 /* Return without collecting diag recs from the handle - to be called if the
    DM function is returning before calling the driver function. */
 int function_return_nodrv( int level, void *handle, int ret_code) 
@@ -4923,19 +5005,19 @@ int function_return_nodrv( int level, void *handle, int ret_code)
  * capture function returns and check error's if necessary
  */
 
-int function_return_ex( int level, void * handle, int ret_code, int save_to_diag )
+int function_return_ex( int level, void * handle, int ret_code, int save_to_diag, int defer_type )
 {
-    DMHENV henv;
-    DMHDBC hdbc;
+    DMHENV  henv;
+    DMHDBC  hdbc;
     DMHSTMT hstmt;
     DMHDESC hdesc;
+    EHEAD   *herror = NULL;
 
     if ( ret_code == SQL_SUCCESS_WITH_INFO || ret_code == SQL_ERROR )
     {
         /*
          * find what type of handle it is
          */
-
         henv = handle;
 
         switch ( henv -> type )
@@ -4958,100 +5040,7 @@ int function_return_ex( int level, void * handle, int ret_code, int save_to_diag
 
                 if ( hdbc -> state >= STATE_C4 )
                 {
-                    if ( hdbc -> unicode_driver )
-                    {
-                        if ( CHECK_SQLGETDIAGFIELDW( hdbc ) &&
-                                CHECK_SQLGETDIAGRECW( hdbc ))
-                        {
-                            extract_diag_error_w( SQL_HANDLE_DBC,
-                                    hdbc -> driver_dbc,
-                                    hdbc,
-                                    &hdbc -> error,
-                                    ret_code,
-                                    save_to_diag );
-                        }
-                        else if ( CHECK_SQLERRORW( hdbc )) 
-                        {
-                            extract_sql_error_w( SQL_NULL_HENV, 
-                                    hdbc -> driver_dbc, 
-                                    SQL_NULL_HSTMT, 
-                                    hdbc,
-                                    &hdbc -> error, 
-                                    ret_code );
-                        }
-                        else if ( CHECK_SQLGETDIAGFIELD( hdbc ) &&
-                                CHECK_SQLGETDIAGREC( hdbc ))
-                        {
-                            extract_diag_error( SQL_HANDLE_DBC,
-                                    hdbc -> driver_dbc,
-                                    hdbc,
-                                    &hdbc -> error,
-                                    ret_code,
-                                    save_to_diag );
-                        }
-                        else if ( CHECK_SQLERROR( hdbc )) 
-                        {
-                            extract_sql_error( SQL_NULL_HENV, 
-                                    hdbc -> driver_dbc, 
-                                    SQL_NULL_HSTMT, 
-                                    hdbc,
-                                    &hdbc -> error, 
-                                    ret_code );
-                        }
-                        else 
-                        {
-                            __post_internal_error( &hdbc -> error,
-                                ERROR_HY000, "Driver returned SQL_ERROR or SQL_SUCCESS_WITH_INFO but no error reporting API found",
-                                hdbc -> environment -> requested_version );
-                        }
-                    }
-                    else
-                    {
-                        if ( CHECK_SQLGETDIAGFIELD( hdbc ) &&
-                                CHECK_SQLGETDIAGREC( hdbc ))
-                        {
-                            extract_diag_error( SQL_HANDLE_DBC,
-                                    hdbc -> driver_dbc,
-                                    hdbc,
-                                    &hdbc -> error,
-                                    ret_code,
-                                    save_to_diag );
-                        }
-                        else if ( CHECK_SQLERROR( hdbc )) 
-                        {
-                            extract_sql_error( SQL_NULL_HENV, 
-                                    hdbc -> driver_dbc, 
-                                    SQL_NULL_HSTMT, 
-                                    hdbc,
-                                    &hdbc -> error, 
-                                    ret_code );
-                        }
-                        else if ( CHECK_SQLGETDIAGFIELDW( hdbc ) &&
-                                CHECK_SQLGETDIAGRECW( hdbc ))
-                        {
-                            extract_diag_error_w( SQL_HANDLE_DBC,
-                                    hdbc -> driver_dbc,
-                                    hdbc,
-                                    &hdbc -> error,
-                                    ret_code,
-                                    save_to_diag );
-                        }
-                        else if ( CHECK_SQLERRORW( hdbc )) 
-                        {
-                            extract_sql_error_w( SQL_NULL_HENV, 
-                                    hdbc -> driver_dbc, 
-                                    SQL_NULL_HSTMT, 
-                                    hdbc,
-                                    &hdbc -> error, 
-                                    ret_code );
-                        }
-                        else 
-                        {
-                            __post_internal_error( &hdbc -> error,
-                                ERROR_HY000, "Driver returned SQL_ERROR or SQL_SUCCESS_WITH_INFO but no error reporting API found",
-                                hdbc -> environment -> requested_version );
-                        }
-                    }
+                    herror = &hdbc->error;
                 }
             }
             break;
@@ -5059,172 +5048,35 @@ int function_return_ex( int level, void * handle, int ret_code, int save_to_diag
           case HSTMT_MAGIC:
             {
                 hstmt = handle;
-
-                /*
-                 * how are we to get the error
-                 */
-
-                if ( hstmt -> connection -> unicode_driver )
-                {
-                    if ( CHECK_SQLGETDIAGFIELDW( hstmt -> connection ) &&
-                            CHECK_SQLGETDIAGRECW( hstmt -> connection ))
-                    {
-                        extract_diag_error_w( SQL_HANDLE_STMT,
-                                hstmt -> driver_stmt,
-                                hstmt -> connection,
-                                &hstmt -> error,
-                                ret_code,
-                                save_to_diag );
-                    }
-                    else if ( CHECK_SQLERRORW( hstmt -> connection )) 
-                    {
-                        extract_sql_error_w( SQL_NULL_HENV, 
-                                SQL_NULL_HDBC, 
-                                hstmt -> driver_stmt, 
-                                hstmt -> connection,
-                                &hstmt -> error, 
-                                ret_code );
-                    }
-                    else if ( CHECK_SQLGETDIAGFIELD( hstmt -> connection ) &&
-                            CHECK_SQLGETDIAGREC( hstmt -> connection ))
-                    {
-                        extract_diag_error( SQL_HANDLE_STMT,
-                                hstmt -> driver_stmt,
-                                hstmt -> connection,
-                                &hstmt -> error,
-                                ret_code,
-                                save_to_diag );
-                    }
-                    else if ( CHECK_SQLERROR( hstmt -> connection )) 
-                    {
-                        extract_sql_error( SQL_NULL_HENV, 
-                                SQL_NULL_HDBC, 
-                                hstmt -> driver_stmt, 
-                                hstmt -> connection,
-                                &hstmt -> error, 
-                                ret_code );
-                    }
-                    else 
-                    {
-                        __post_internal_error( &hstmt -> error,
-                            ERROR_HY000, "Driver returned SQL_ERROR or SQL_SUCCESS_WITH_INFO but no error reporting API found",
-                            hstmt -> connection -> environment -> requested_version );
-                    }
-                }
-                else
-                {
-                    if ( CHECK_SQLGETDIAGFIELD( hstmt -> connection ) &&
-                            CHECK_SQLGETDIAGREC( hstmt -> connection ))
-                    {
-                        extract_diag_error( SQL_HANDLE_STMT,
-                                hstmt -> driver_stmt,
-                                hstmt -> connection,
-                                &hstmt -> error,
-                                ret_code,
-                                save_to_diag );
-                    }
-                    else if ( CHECK_SQLERROR( hstmt -> connection )) 
-                    {
-                        extract_sql_error( SQL_NULL_HENV, 
-                                SQL_NULL_HDBC, 
-                                hstmt -> driver_stmt, 
-                                hstmt -> connection,
-                                &hstmt -> error, 
-                                ret_code );
-                    }
-                    else if ( CHECK_SQLGETDIAGFIELDW( hstmt -> connection ) &&
-                            CHECK_SQLGETDIAGRECW( hstmt -> connection ))
-                    {
-                        extract_diag_error_w( SQL_HANDLE_STMT,
-                                hstmt -> driver_stmt,
-                                hstmt -> connection,
-                                &hstmt -> error,
-                                ret_code,
-                                save_to_diag );
-                    }
-                    else if ( CHECK_SQLERRORW( hstmt -> connection )) 
-                    {
-                        extract_sql_error_w( SQL_NULL_HENV, 
-                                SQL_NULL_HDBC, 
-                                hstmt -> driver_stmt, 
-                                hstmt -> connection,
-                                &hstmt -> error, 
-                                ret_code );
-                    }
-                    else 
-                    {
-                        __post_internal_error( &hstmt -> error,
-                            ERROR_HY000, "Driver returned SQL_ERROR or SQL_SUCCESS_WITH_INFO but no error reporting API found",
-                            hstmt -> connection -> environment -> requested_version );
-                    }
-                }
+                herror = &hstmt->error;
+                hdbc = hstmt->connection;
             }
             break;
 
           case HDESC_MAGIC:
             {
                 hdesc = handle;
-
-                if ( hdesc -> connection -> unicode_driver )
-                {
-                    if ( CHECK_SQLGETDIAGFIELDW( hdesc -> connection ) &&
-                            CHECK_SQLGETDIAGRECW( hdesc -> connection ))
-                    {
-                        extract_diag_error_w( SQL_HANDLE_DESC,
-                                hdesc -> driver_desc,
-                                hdesc -> connection,
-                                &hdesc -> error,
-                                ret_code,
-                                save_to_diag );
-                    }
-                    else if ( CHECK_SQLGETDIAGFIELD( hdesc -> connection ) &&
-                            CHECK_SQLGETDIAGREC( hdesc -> connection ))
-                    {
-                        extract_diag_error( SQL_HANDLE_DESC,
-                                hdesc -> driver_desc,
-                                hdesc -> connection,
-                                &hdesc -> error,
-                                ret_code,
-                                save_to_diag );
-                    }
-                    else 
-                    {
-                        __post_internal_error( &hdesc -> error,
-                            ERROR_HY000, "Driver returned SQL_ERROR or SQL_SUCCESS_WITH_INFO but no error reporting API found",
-                            hdesc -> connection -> environment -> requested_version );
-                    }
-                }
-                else
-                {
-                    if ( CHECK_SQLGETDIAGFIELD( hdesc -> connection ) &&
-                            CHECK_SQLGETDIAGREC( hdesc -> connection ))
-                    {
-                        extract_diag_error( SQL_HANDLE_DESC,
-                                hdesc -> driver_desc,
-                                hdesc -> connection,
-                                &hdesc -> error,
-                                ret_code,
-                                save_to_diag );
-                    }
-                    else if ( CHECK_SQLGETDIAGFIELDW( hdesc -> connection ) &&
-                            CHECK_SQLGETDIAGRECW( hdesc -> connection ))
-                    {
-                        extract_diag_error_w( SQL_HANDLE_DESC,
-                                hdesc -> driver_desc,
-                                hdesc -> connection,
-                                &hdesc -> error,
-                                ret_code,
-                                save_to_diag );
-                    }
-                    else 
-                    {
-                        __post_internal_error( &hdesc -> error,
-                            ERROR_HY000, "Driver returned SQL_ERROR or SQL_SUCCESS_WITH_INFO but no error reporting API found",
-                            hdesc -> connection -> environment -> requested_version );
-                    }
-                }
+                herror = &hdesc->error;
+                hdbc = hdesc->connection;
             }
             break;
+        }
+
+        if ( herror )
+        {
+            /*
+             * set defer flag
+             */
+            herror->defer_extract = ( ret_code == SQL_SUCCESS_WITH_INFO ? defer_type : defer_type >> 1 ) & 1;
+
+            if ( herror->defer_extract )
+            {
+                herror->ret_code_deferred = ret_code;
+            }
+            else
+            {
+                extract_error_from_driver( herror, hdbc, ret_code, save_to_diag );
+            }
         }
     }
 
@@ -5285,6 +5137,9 @@ void function_entry( void *handle )
         version = hdesc -> connection -> environment -> requested_version;
         break;
     }
+
+    error_header->defer_extract = 0;
+    error_header->ret_code_deferred = 0;
 
     prev = NULL;
     cur = error_header -> sql_diag_head.error_list_head;
@@ -5419,7 +5274,7 @@ void __post_internal_error_api( EHEAD *error_handle,
 
       case ERROR_08002:
         strcpy( sqlstate, "08002" );
-        message = "Connection name in use";
+        message = "Connection in use";
         break;
 
       case ERROR_08003:
@@ -5691,7 +5546,7 @@ void __post_internal_error_api( EHEAD *error_handle,
 
       case ERROR_IM002:
         strcpy( sqlstate, "IM002" );
-        message = "Data source name not found, and no default driver specified";
+        message = "Data source name not found and no default driver specified";
         subclass = SUBCLASS_ODBC;
         class = SUBCLASS_ODBC;
         break;
@@ -5815,6 +5670,7 @@ void  dm_log_open( char *program_name,
      */
 
     log_info.pid_logging = pid_logging;
+    log_info.ref_count++;
 }
 
 void dm_log_write( char *function_name, int line, int type, int severity,
@@ -5954,9 +5810,16 @@ void dm_log_write_diag( char *message )
 
 void dm_log_close( void )
 {
-    free( log_info.program_name );
-    free( log_info.log_file_name );
-    log_info.program_name = NULL;
-    log_info.log_file_name = NULL;
-    log_info.log_flag = 0;
+    if ( !log_info.ref_count )
+        return;
+
+    log_info.ref_count--;
+    if ( !log_info.ref_count )
+    {
+        free( log_info.program_name );
+        free( log_info.log_file_name );
+        log_info.program_name = NULL;
+        log_info.log_file_name = NULL;
+        log_info.log_flag = 0;
+    }
 }

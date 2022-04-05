@@ -431,7 +431,7 @@ SQLRETURN SQLSetConnectOptionW( SQLHDBC connection_handle,
             struct save_attr *sa = calloc( 1, sizeof( struct save_attr ));
 
             sa -> attr_type = option;
-            sa -> int_attr = ( SQLINTEGER ) value;
+            sa -> intptr_attr = value;
             sa -> next = connection -> save_attr;
             connection -> save_attr = sa;
         }
@@ -523,5 +523,5 @@ SQLRETURN SQLSetConnectOptionW( SQLHDBC connection_handle,
         connection -> bookmarks_on = (SQLUINTEGER) value;
     }
 
-    return function_return( SQL_HANDLE_DBC, connection, ret );
+    return function_return( SQL_HANDLE_DBC, connection, ret, DEFER_R3 );
 }

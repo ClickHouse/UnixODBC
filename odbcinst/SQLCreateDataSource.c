@@ -180,6 +180,22 @@ void _multi_string_copy_to_wide( SQLWCHAR *out, LPCSTR in, int len )
     *out++ = 0;
 }
 
+int _multi_string_length( LPCSTR in )
+{
+    LPCSTR ch;
+
+    if ( !in )
+        return 0;
+
+    for ( ch = in ; !(*ch == 0 && *(ch + 1) == 0) ; ch ++ );
+
+    /* The convention seems to be to exclude the very last '\0' character from
+     * the count, so that is what we do here.
+     */
+    return ch - in + 1;
+}
+
+
 /*! 
  * \brief   Invokes a UI (a wizard) to walk User through creating a DSN.
  * 
@@ -226,10 +242,19 @@ BOOL SQLCreateDataSource( HWND hWnd, LPCSTR pszDS )
     {
         /* change the name, as it avoids it finding it in the calling lib */
         pSQLCreateDataSource = (BOOL (*)(HWND, LPCSTR))lt_dlsym( hDLL, "ODBCCreateDataSource" );
-        if ( pSQLCreateDataSource )
-            return pSQLCreateDataSource( ( *(hODBCInstWnd->szUI) ? hODBCInstWnd->hWnd : NULL ), pszDS );
+
+        if ( pSQLCreateDataSource ) {
+            BOOL ret;
+
+            ret = pSQLCreateDataSource( ( *(hODBCInstWnd->szUI) ? hODBCInstWnd->hWnd : NULL ), pszDS );
+
+            lt_dlclose( hDLL );
+            return ret;
+        }
         else
             inst_logPushMsg( __FILE__, __FILE__, __LINE__, LOG_CRITICAL, ODBC_ERROR_GENERAL_ERR, (char*)lt_dlerror() );
+
+        lt_dlclose( hDLL );
     }
     else
     {
@@ -240,10 +265,18 @@ BOOL SQLCreateDataSource( HWND hWnd, LPCSTR pszDS )
         {
             /* change the name, as it avoids linker finding it in the calling lib */
             pSQLCreateDataSource = (BOOL (*)(HWND,LPCSTR))lt_dlsym( hDLL, "ODBCCreateDataSource" );
-            if ( pSQLCreateDataSource )
-                return pSQLCreateDataSource( ( *(hODBCInstWnd->szUI) ? hODBCInstWnd->hWnd : NULL ), pszDS );
+            if ( pSQLCreateDataSource ) {
+                BOOL ret;
+
+                ret = pSQLCreateDataSource( ( *(hODBCInstWnd->szUI) ? hODBCInstWnd->hWnd : NULL ), pszDS );
+
+                lt_dlclose( hDLL );
+                return ret;
+            }
             else
                 inst_logPushMsg( __FILE__, __FILE__, __LINE__, LOG_CRITICAL, ODBC_ERROR_GENERAL_ERR, (char*)lt_dlerror() );
+
+            lt_dlclose( hDLL );
         }
     }
 
@@ -260,15 +293,77 @@ BOOL SQLCreateDataSource( HWND hWnd, LPCSTR pszDS )
  */
 BOOL INSTAPI SQLCreateDataSourceW( HWND hwndParent, LPCWSTR lpszDSN )
 {
-    BOOL ret;
-    char *ms = _multi_string_alloc_and_copy( lpszDSN );
+    HODBCINSTWND  hODBCInstWnd = (HODBCINSTWND)hwndParent;
+    char          szName[FILENAME_MAX];
+    char          szNameAndExtension[FILENAME_MAX];
+    char          szPathAndName[FILENAME_MAX];
+    void *        hDLL;
+    BOOL          (*pSQLCreateDataSource)(HWND, LPCWSTR);
 
     inst_logClear();
 
-    ret = SQLCreateDataSource( hwndParent, ms );
+    /* ODBC specification states that hWnd is mandatory. */
+    if ( !hwndParent )
+    {
+        inst_logPushMsg( __FILE__, __FILE__, __LINE__, LOG_CRITICAL, ODBC_ERROR_INVALID_HWND, "" );
+        return FALSE;
+    }
 
-    free( ms );
+    /* initialize libtool */
+    if ( lt_dlinit() )
+    {
+        inst_logPushMsg( __FILE__, __FILE__, __LINE__, LOG_CRITICAL, ODBC_ERROR_GENERAL_ERR, "lt_dlinit() failed" );
+        return FALSE;
+    }
 
-    return ret;
+    /* get plugin name */
+    _appendUIPluginExtension( szNameAndExtension, _getUIPluginName( szName, hODBCInstWnd->szUI ) );
+
+    /* lets try loading the plugin using an implicit path */
+    hDLL = lt_dlopen( szNameAndExtension );
+    if ( hDLL )
+    {
+        /* change the name, as it avoids it finding it in the calling lib */
+        pSQLCreateDataSource = (BOOL (*)(HWND, LPCWSTR))lt_dlsym( hDLL, "ODBCCreateDataSourceW" );
+        if ( pSQLCreateDataSource ) {
+            BOOL ret;
+
+            ret = pSQLCreateDataSource( ( *(hODBCInstWnd->szUI) ? hODBCInstWnd->hWnd : NULL ), lpszDSN );
+
+            lt_dlclose( hDLL );
+            return ret;
+        }
+        else
+            inst_logPushMsg( __FILE__, __FILE__, __LINE__, LOG_CRITICAL, ODBC_ERROR_GENERAL_ERR, (char*)lt_dlerror() );
+
+        lt_dlclose( hDLL );
+    }
+    else
+    {
+        /* try with explicit path */
+        _prependUIPluginPath( szPathAndName, szNameAndExtension );
+        hDLL = lt_dlopen( szPathAndName );
+        if ( hDLL )
+        {
+            /* change the name, as it avoids linker finding it in the calling lib */
+            pSQLCreateDataSource = (BOOL (*)(HWND,LPCWSTR))lt_dlsym( hDLL, "ODBCCreateDataSourceW" );
+            if ( pSQLCreateDataSource ) {
+                BOOL ret;
+
+                ret = pSQLCreateDataSource( ( *(hODBCInstWnd->szUI) ? hODBCInstWnd->hWnd : NULL ), lpszDSN );
+
+                lt_dlclose( hDLL );
+                return ret;
+            }
+            else
+                inst_logPushMsg( __FILE__, __FILE__, __LINE__, LOG_CRITICAL, ODBC_ERROR_GENERAL_ERR, (char*)lt_dlerror() );
+
+            lt_dlclose( hDLL );
+        }
+    }
+
+    /* report failure to caller */
+    inst_logPushMsg( __FILE__, __FILE__, __LINE__, LOG_CRITICAL, ODBC_ERROR_GENERAL_ERR, "" );
+
+    return FALSE;
 }
-
