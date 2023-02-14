@@ -10,6 +10,11 @@
  * Peter Harvey		- pharvey@codebydesign.com
  **************************************************/
 #include <config.h>
+
+#ifdef UNIXODBC_SOURCE
+#include <ltdl.h>
+#endif
+
 #include <odbcinstext.h>
 
 /*
@@ -165,6 +170,9 @@ int ODBCINSTConstructProperties( char *pszDriver, HODBCINSTPROPERTY *hFirstPrope
      */
 
     lt_dlinit();
+#ifdef MODULEDIR
+    lt_dlsetsearchpath(MODULEDIR);
+#endif
 
 	/* TRY GET FUNC FROM DRIVER SETUP */
 	if ( !(hDLL = lt_dlopen( szDriverSetup ))  )
