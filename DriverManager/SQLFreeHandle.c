@@ -198,15 +198,15 @@ SQLRETURN __SQLFreeHandle( SQLSMALLINT handle_type,
 
             if ( !__validate_env( environment ))
             {
-                dm_log_write( __FILE__, 
-                        __LINE__, 
-                        LOG_INFO, 
-                        LOG_INFO, 
+                dm_log_write( __FILE__,
+                        __LINE__,
+                        LOG_INFO,
+                        LOG_INFO,
                         "Error: SQL_INVALID_HANDLE" );
 
                 return SQL_INVALID_HANDLE;
             }
-            
+
             function_entry( environment );
 
             if ( log_info.log_flag )
@@ -266,10 +266,10 @@ SQLRETURN __SQLFreeHandle( SQLSMALLINT handle_type,
 
             if ( !__validate_dbc( connection ))
             {
-                dm_log_write( __FILE__, 
-                            __LINE__, 
-                            LOG_INFO, 
-                            LOG_INFO, 
+                dm_log_write( __FILE__,
+                            __LINE__,
+                            LOG_INFO,
+                            LOG_INFO,
                             "Error: SQL_INVALID_HANDLE" );
 
                 return SQL_INVALID_HANDLE;
@@ -363,10 +363,10 @@ SQLRETURN __SQLFreeHandle( SQLSMALLINT handle_type,
              */
             if ( !__validate_stmt( statement ))
             {
-                dm_log_write( __FILE__, 
-                            __LINE__, 
-                            LOG_INFO, 
-                            LOG_INFO, 
+                dm_log_write( __FILE__,
+                            __LINE__,
+                            LOG_INFO,
+                            LOG_INFO,
                             "Error: SQL_INVALID_HANDLE" );
 
                 return SQL_INVALID_HANDLE;
@@ -450,7 +450,7 @@ SQLRETURN __SQLFreeHandle( SQLSMALLINT handle_type,
             if ( SQL_SUCCEEDED( ret ))
             {
                 /*
-                 * release the implicit descriptors, 
+                 * release the implicit descriptors,
 				 * this matches the tests in SQLAllocHandle
                  */
                 if (( statement -> connection -> driver_act_ver == 3 &&
@@ -536,14 +536,14 @@ SQLRETURN __SQLFreeHandle( SQLSMALLINT handle_type,
 						LOG_INFO,
 						LOG_INFO,
 						"Error: HY017" );
-		
+
 				__post_internal_error( &descriptor -> error,
 						ERROR_HY017, NULL,
 						connection -> environment -> requested_version );
-		
+
 				return function_return_nodrv( IGNORE_THREAD, descriptor, SQL_ERROR );
 			}
-		
+
             thread_protect( SQL_HANDLE_DESC, descriptor );
 
             if ( !CHECK_SQLFREEHANDLE( connection ))
@@ -577,10 +577,10 @@ SQLRETURN __SQLFreeHandle( SQLSMALLINT handle_type,
                 __check_stmt_from_desc( descriptor, STATE_S11 ) ||
                 __check_stmt_from_desc( descriptor, STATE_S12 )) {
 
-                dm_log_write( __FILE__, 
-                        __LINE__, 
-                        LOG_INFO, 
-                        LOG_INFO, 
+                dm_log_write( __FILE__,
+                        __LINE__,
+                        LOG_INFO,
+                        LOG_INFO,
                         "Error: HY010" );
 
                 __post_internal_error( &descriptor -> error,
@@ -623,7 +623,7 @@ SQLRETURN __SQLFreeHandle( SQLSMALLINT handle_type,
 }
 
 SQLRETURN SQLFreeHandle( SQLSMALLINT handle_type,
-        SQLHANDLE handle )
+        SQLHANDLE handle ) __attribute__((weak))
 {
     return __SQLFreeHandle( handle_type,
             handle );
