@@ -558,7 +558,7 @@ SQLRETURN SQLGetDiagRec( SQLSMALLINT handle_type,
         SQLINTEGER  *native,
         SQLCHAR     *message_text,
         SQLSMALLINT buffer_length,
-        SQLSMALLINT *text_length_ptr )
+        SQLSMALLINT *text_length_ptr )  __attribute__((weak))
 {
     SQLRETURN ret;
     SQLCHAR s0[ 48 ], s1[ 100 + LOG_MESSAGE_LEN ];

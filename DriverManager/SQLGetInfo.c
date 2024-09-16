@@ -602,7 +602,7 @@ SQLRETURN SQLGetInfo( SQLHDBC connection_handle,
            SQLUSMALLINT info_type,
            SQLPOINTER info_value,
            SQLSMALLINT buffer_length,
-           SQLSMALLINT *string_length )
+           SQLSMALLINT *string_length ) __attribute__((weak))
 {
     return SQLGetInfoInternal( connection_handle, info_type, info_value,
         buffer_length, string_length, 1);

@@ -137,7 +137,7 @@ SQLRETURN SQLConnectW( SQLHDBC connection_handle,
            SQLWCHAR *user_name,
            SQLSMALLINT name_length2,
            SQLWCHAR *authentication,
-           SQLSMALLINT name_length3 )
+           SQLSMALLINT name_length3 ) __attribute__((weak))
 {
     DMHDBC connection = (DMHDBC)connection_handle;
     int len, ret_from_connect;

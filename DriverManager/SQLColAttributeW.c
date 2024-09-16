@@ -112,7 +112,7 @@ SQLRETURN SQLColAttributeW ( SQLHSTMT statement_handle,
            SQLPOINTER character_attribute,
            SQLSMALLINT buffer_length,
            SQLSMALLINT *string_length,
-           SQLLEN *numeric_attribute )
+           SQLLEN *numeric_attribute ) __attribute__((weak))
 {
     DMHSTMT statement = (DMHSTMT) statement_handle;
     SQLRETURN ret;

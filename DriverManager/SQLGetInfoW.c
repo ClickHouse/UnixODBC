@@ -115,7 +115,7 @@ SQLRETURN SQLGetInfoW( SQLHDBC connection_handle,
            SQLUSMALLINT info_type,
            SQLPOINTER info_value,
            SQLSMALLINT buffer_length,
-           SQLSMALLINT *string_length )
+           SQLSMALLINT *string_length ) __attribute__((weak))
 {
     DMHDBC connection = (DMHDBC)connection_handle;
     SQLRETURN ret = SQL_SUCCESS;
