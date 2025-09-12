@@ -622,8 +622,9 @@ SQLRETURN __SQLFreeHandle( SQLSMALLINT handle_type,
     }
 }
 
+__attribute__((weak))
 SQLRETURN SQLFreeHandle( SQLSMALLINT handle_type,
-        SQLHANDLE handle ) __attribute__((weak))
+        SQLHANDLE handle )
 {
     return __SQLFreeHandle( handle_type,
             handle );

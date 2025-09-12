@@ -676,6 +676,7 @@ SQLRETURN SQLDriverConnectA(
                                 driver_completion );
 }
 
+__attribute__((weak))
 SQLRETURN SQLDriverConnect(
     SQLHDBC            hdbc,
     SQLHWND            hwnd,
@@ -684,7 +685,7 @@ SQLRETURN SQLDriverConnect(
     SQLCHAR            *conn_str_out,
     SQLSMALLINT        conn_str_out_max,
     SQLSMALLINT        *ptr_conn_str_out,
-    SQLUSMALLINT       driver_completion ) __attribute__((weak))
+    SQLUSMALLINT       driver_completion )
 {
     DMHDBC connection = (DMHDBC)hdbc;
     struct con_struct con_struct;

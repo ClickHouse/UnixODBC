@@ -414,6 +414,7 @@ static SQLRETURN extract_sql_error_rec_w( EHEAD *head,
     }
 }
 
+__attribute__((weak))
 SQLRETURN SQLGetDiagRecW( SQLSMALLINT handle_type,
         SQLHANDLE   handle,
         SQLSMALLINT rec_number,
@@ -421,7 +422,7 @@ SQLRETURN SQLGetDiagRecW( SQLSMALLINT handle_type,
         SQLINTEGER  *native,
         SQLWCHAR     *message_text,
         SQLSMALLINT buffer_length,
-        SQLSMALLINT *text_length_ptr )  __attribute__((weak))
+        SQLSMALLINT *text_length_ptr )
 {
     SQLRETURN ret;
     SQLCHAR s0[ 48 ], s1[ 100 + LOG_MESSAGE_LEN ];

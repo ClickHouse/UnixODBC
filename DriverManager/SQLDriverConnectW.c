@@ -200,6 +200,7 @@ int got_driver = 0;    /* if we have a DRIVER or FILEDSN then ignore any DSN */
     return 0;
 }
 
+__attribute__((weak))
 SQLRETURN SQLDriverConnectW(
     SQLHDBC            hdbc,
     SQLHWND            hwnd,
@@ -208,7 +209,7 @@ SQLRETURN SQLDriverConnectW(
     SQLWCHAR            *conn_str_out,
     SQLSMALLINT        conn_str_out_max,
     SQLSMALLINT        *ptr_conn_str_out,
-    SQLUSMALLINT       driver_completion ) __attribute__((weak))
+    SQLUSMALLINT       driver_completion )
 {
     DMHDBC connection = (DMHDBC)hdbc;
     struct con_struct con_struct;

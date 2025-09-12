@@ -111,11 +111,12 @@
 
 static char const rcsid[]= "$RCSfile: SQLGetInfoW.c,v $";
 
+__attribute__((weak))
 SQLRETURN SQLGetInfoW( SQLHDBC connection_handle,
            SQLUSMALLINT info_type,
            SQLPOINTER info_value,
            SQLSMALLINT buffer_length,
-           SQLSMALLINT *string_length ) __attribute__((weak))
+           SQLSMALLINT *string_length )
 {
     DMHDBC connection = (DMHDBC)connection_handle;
     SQLRETURN ret = SQL_SUCCESS;

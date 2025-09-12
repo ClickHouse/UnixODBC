@@ -197,12 +197,13 @@ int check_target_type( int c_type, int connection_mode)
 	}
 }
 
+__attribute__((weak))
 SQLRETURN SQLBindCol( SQLHSTMT statement_handle,
 		   SQLUSMALLINT column_number,
            SQLSMALLINT target_type,
 		   SQLPOINTER target_value,
            SQLLEN buffer_length,
-	   	   SQLLEN *strlen_or_ind ) __attribute__((weak))
+	   	   SQLLEN *strlen_or_ind )
 {
     DMHSTMT statement = (DMHSTMT) statement_handle;
     SQLRETURN ret;

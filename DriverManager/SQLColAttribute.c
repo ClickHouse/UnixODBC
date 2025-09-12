@@ -243,13 +243,14 @@ SQLRETURN SQLColAttributeA( SQLHSTMT statement_handle,
                             numeric_attribute );
 }
 
+__attribute__((weak))
 SQLRETURN SQLColAttribute ( SQLHSTMT statement_handle,
            SQLUSMALLINT column_number,
            SQLUSMALLINT field_identifier,
            SQLPOINTER character_attribute,
            SQLSMALLINT buffer_length,
            SQLSMALLINT *string_length,
-           SQLLEN *numeric_attribute ) __attribute__((weak))
+           SQLLEN *numeric_attribute )
 {
     DMHSTMT statement = (DMHSTMT) statement_handle;
     SQLRETURN ret = 0;

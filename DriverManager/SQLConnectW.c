@@ -130,14 +130,14 @@ extern int pool_max_size;
 extern int pool_wait_timeout;
 
 
-
+__attribute__((weak))
 SQLRETURN SQLConnectW( SQLHDBC connection_handle,
            SQLWCHAR *server_name,
            SQLSMALLINT name_length1,
            SQLWCHAR *user_name,
            SQLSMALLINT name_length2,
            SQLWCHAR *authentication,
-           SQLSMALLINT name_length3 ) __attribute__((weak))
+           SQLSMALLINT name_length3 )
 {
     DMHDBC connection = (DMHDBC)connection_handle;
     int len, ret_from_connect;

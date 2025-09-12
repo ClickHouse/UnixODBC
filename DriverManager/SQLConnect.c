@@ -3811,13 +3811,14 @@ SQLRETURN SQLConnectA( SQLHDBC connection_handle,
                         name_length3 );
 }
 
+__attribute__((weak))
 SQLRETURN SQLConnect( SQLHDBC connection_handle,
            SQLCHAR *server_name,
            SQLSMALLINT name_length1,
            SQLCHAR *user_name,
            SQLSMALLINT name_length2,
            SQLCHAR *authentication,
-           SQLSMALLINT name_length3 ) __attribute__((weak))
+           SQLSMALLINT name_length3 )
 {
     DMHDBC connection = (DMHDBC)connection_handle;
     int len, ret_from_connect;

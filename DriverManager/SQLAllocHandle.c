@@ -1329,9 +1329,10 @@ SQLRETURN __SQLAllocHandle( SQLSMALLINT handle_type,
     }
 }
 
+__attribute__((weak))
 SQLRETURN SQLAllocHandle( SQLSMALLINT handle_type,
            SQLHANDLE input_handle,
-           SQLHANDLE *output_handle ) __attribute__((weak))
+           SQLHANDLE *output_handle )
 {
     /*
      * setting a requested version to 0

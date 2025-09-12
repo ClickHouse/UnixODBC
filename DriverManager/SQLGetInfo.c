@@ -598,11 +598,12 @@ SQLRETURN __SQLGetInfo( SQLHDBC connection_handle,
         buffer_length, string_length, 0);
 }
 
+__attribute__((weak))
 SQLRETURN SQLGetInfo( SQLHDBC connection_handle,
            SQLUSMALLINT info_type,
            SQLPOINTER info_value,
            SQLSMALLINT buffer_length,
-           SQLSMALLINT *string_length ) __attribute__((weak))
+           SQLSMALLINT *string_length )
 {
     return SQLGetInfoInternal( connection_handle, info_type, info_value,
         buffer_length, string_length, 1);
